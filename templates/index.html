@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Analyzer </title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Main App Component
+        function App() {
+            const [activeTab, setActiveTab] = useState('single');
+            const [analysisResult, setAnalysisResult] = useState(null);
+            const [bulkResults, setBulkResults] = useState(null);
+            const [searchResults, setSearchResults] = useState(null);
+            const [loading, setLoading] = useState(false);
+
+            return (
+                <div className="min-h-screen">
+                    {/* Header */}
+                    <header className="bg-white shadow-lg">
+                        <div className="container mx-auto px-4 py-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <i className="fas fa-file-alt text-3xl text-red-600"></i>
+                                    <h1 className="text-3xl font-bold text-gray-800">Resume Analyzer </h1>
+                                </div>
+                                <div className="flex space-x-4">
+                                    <button
+                                        onClick={() => setActiveTab('single')}
+                                        className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                                            activeTab === 'single' 
+                                            ? 'bg-green-600 text-white shadow-lg' 
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        <i className="fas fa-user mr-2"></i>
+                                        Resume Analysis
+                                    </button>
+                                
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="container mx-auto px-4 py-8">
+                        {activeTab === 'single' && (
+                            <SingleAnalyzer 
+                                onAnalysisComplete={setAnalysisResult}
+                                loading={loading}
+                                setLoading={setLoading}
+                            />
+                        )}
+                        
+
+                        {/* Results Display */}
+                        {analysisResult && activeTab === 'single' && (
+                            <AnalysisResults 
+                                result={analysisResult} 
+                                type="single"
+                            />
+                        )}
+                        {bulkResults && activeTab === 'bulk' && (
+                            <AnalysisResults 
+                                result={bulkResults} 
+                                type="bulk"
+                            />
+                        )}
+                        {searchResults && activeTab === 'search' && (
+                            <SearchResults results={searchResults} />
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        // Single Resume Analyzer Component
+        function SingleAnalyzer({ onAnalysisComplete, loading, setLoading }) {
+            const [jobDescription, setJobDescription] = useState('');
+            const [targetRole, setTargetRole] = useState('');
+
+            const handleFileUpload = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                setLoading(true);
+                const formData = new FormData();
+                formData.append('resume', file);
+                formData.append('job_description', jobDescription);
+                formData.append('target_role', targetRole);
+
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.error) {
+                        alert(`Analysis failed: ${result.error}`);
+                        return;
+                    }
+                    
+                    onAnalysisComplete(result);
+                } catch (error) {
+                    console.error('Analysis failed:', error);
+                    alert(`Analysis failed: ${error.message}. Please try again.`);
+                } finally {
+                    setLoading(false);
+                    // Reset file input
+                    event.target.value = '';
+                }
+            };
+
+            return (
+                <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                        <i className="fas fa-user-edit mr-3 text-red-600"></i>
+                     Resume Analysis
+                    </h2>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Upload Section */}
+                        <div className="space-y-6">
+                            <div className="border-2 border-dashed border-blue-300 rounded-2xl p-8 text-center bg-blue-50 transition-all hover:border-blue-400">
+                                <i className="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-4"></i>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                    Upload Resume
+                                </h3>
+                                <p className="text-gray-600 mb-4">
+                                    Supports PDF, DOCX, and TXT files
+                                </p>
+                                <input
+                                    type="file"
+                                    onChange={handleFileUpload}
+                                    accept=".pdf,.docx,.txt"
+                                    className="hidden"
+                                    id="resume-upload"
+                                    disabled={loading}
+                                />
+                                <label
+                                    htmlFor="resume-upload"
+                                    className={`inline-flex items-center px-6 py-3 rounded-lg font-semibold cursor-pointer transition-all ${
+                                        loading 
+                                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
+                                    }`}
+                                >
+                                    <i className="fas fa-upload mr-2"></i>
+                                    {loading ? 'Processing...' : 'Choose File'}
+                                </label>
+                            </div>
+
+                            {/* Role Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-briefcase mr-2 text-blue-600"></i>
+                                    Target Role (Optional)
+                                </label>
+                                <select
+                                    value={targetRole}
+                                    onChange={(e) => setTargetRole(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    disabled={loading}
+                                >
+                                    <option value="">Auto-detect best role</option>
+                                    <option value="Software Engineer">Software Engineer</option>
+                                    <option value="Data Scientist">Data Scientist</option>
+                                    <option value="Frontend Developer">Frontend Developer</option>
+                                    <option value="Backend Developer">Backend Developer</option>
+                                    <option value="Full Stack Developer">Full Stack Developer</option>
+                                    <option value="DevOps Engineer">DevOps Engineer</option>
+                                    <option value="Data Analyst">Data Analyst</option>
+                                    <option value="Product Manager">Product Manager</option>
+                                    <option value="UX/UI Designer">UX/UI Designer</option>
+                                    <option value="QA Engineer">QA Engineer</option>
+                                    <option value="System Administrator">System Administrator</option>
+                                    <option value="Network Engineer">Network Engineer</option>
+                                    <option value="Security Engineer">Security Engineer</option>
+                                    <option value="Mobile Developer">Mobile Developer</option>
+                                    <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Job Description */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-file-alt mr-2 text-blue-600"></i>
+                                Job Description (Optional)
+                            </label>
+                            <textarea
+                                value={jobDescription}
+                                onChange={(e) => setJobDescription(e.target.value)}
+                                placeholder="Paste the job description here for targeted analysis..."
+                                rows="12"
+                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Loading Indicator */}
+                    {loading && (
+                        <div className="mt-6 text-center">
+                            <div className="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-700 rounded-lg">
+                                <i className="fas fa-spinner fa-spin mr-3"></i>
+                                Analyzing resume... This may take a few seconds.
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Bulk Analyzer Component
+        function BulkAnalyzer({ onAnalysisComplete, loading, setLoading }) {
+            const [jobDescription, setJobDescription] = useState('');
+            const [targetRole, setTargetRole] = useState('');
+
+            const handleBulkUpload = async (event) => {
+                const files = event.target.files;
+                if (!files.length) return;
+
+                setLoading(true);
+                const formData = new FormData();
+                for (let file of files) {
+                    formData.append('resumes', file);
+                }
+                formData.append('job_description', jobDescription);
+                formData.append('target_role', targetRole);
+
+                try {
+                    const response = await fetch('/analyze_bulk', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.error) {
+                        alert(`Bulk analysis failed: ${result.error}`);
+                        return;
+                    }
+                    
+                    onAnalysisComplete(result);
+                } catch (error) {
+                    console.error('Bulk analysis failed:', error);
+                    alert(`Bulk analysis failed: ${error.message}. Please try again.`);
+                } finally {
+                    setLoading(false);
+                    // Reset file input
+                    event.target.value = '';
+                }
+            };
+
+            return (
+                <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                        <i className="fas fa-users mr-3 text-green-600"></i>
+                        Bulk Resume Analysis
+                    </h2>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Upload Section */}
+                        <div className="space-y-6">
+                            <div className="border-2 border-dashed border-green-300 rounded-2xl p-8 text-center bg-green-50 transition-all hover:border-green-400">
+                                <i className="fas fa-folder-open text-4xl text-green-500 mb-4"></i>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                    Upload Multiple Resumes
+                                </h3>
+                                <p className="text-gray-600 mb-4">
+                                    Select multiple PDF, DOCX, or TXT files
+                                </p>
+                                <input
+                                    type="file"
+                                    onChange={handleBulkUpload}
+                                    accept=".pdf,.docx,.txt"
+                                    multiple
+                                    className="hidden"
+                                    id="bulk-upload"
+                                    disabled={loading}
+                                />
+                                <label
+                                    htmlFor="bulk-upload"
+                                    className={`inline-flex items-center px-6 py-3 rounded-lg font-semibold cursor-pointer transition-all ${
+                                        loading 
+                                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                        : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg'
+                                    }`}
+                                >
+                                    <i className="fas fa-upload mr-2"></i>
+                                    {loading ? 'Processing...' : 'Choose Files'}
+                                </label>
+                            </div>
+
+                            {/* Role Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-briefcase mr-2 text-green-600"></i>
+                                    Target Role (Optional)
+                                </label>
+                                <select
+                                    value={targetRole}
+                                    onChange={(e) => setTargetRole(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    disabled={loading}
+                                >
+                                    <option value="">Auto-detect best role</option>
+                                    <option value="Software Engineer">Software Engineer</option>
+                                    <option value="Data Scientist">Data Scientist</option>
+                                    <option value="Frontend Developer">Frontend Developer</option>
+                                    <option value="Backend Developer">Backend Developer</option>
+                                    <option value="Full Stack Developer">Full Stack Developer</option>
+                                    <option value="DevOps Engineer">DevOps Engineer</option>
+                                    <option value="Data Analyst">Data Analyst</option>
+                                    <option value="Product Manager">Product Manager</option>
+                                    <option value="UX/UI Designer">UX/UI Designer</option>
+                                    <option value="QA Engineer">QA Engineer</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Job Description */}
+                        <div>
+                          
+                            <textarea
+                                value={jobDescription}
+                                onChange={(e) => setJobDescription(e.target.value)}
+                                placeholder="Paste the job description here for targeted analysis..."
+                                rows="12"
+                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    {loading && (
+                        <div className="mt-6 text-center">
+                            <div className="inline-flex items-center px-6 py-3 bg-green-100 text-green-700 rounded-lg">
+                                <i className="fas fa-spinner fa-spin mr-3"></i>
+                                Analyzing {loading && 'multiple'} resumes... Please wait.
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Semantic Search Component
+        function SemanticSearch({ onSearchComplete, loading, setLoading }) {
+            const [query, setQuery] = useState('');
+            const [limit, setLimit] = useState(5);
+
+            const handleSearch = async () => {
+                if (!query.trim()) {
+                    alert('Please enter a search query');
+                    return;
+                }
+
+                setLoading(true);
+                try {
+                    const response = await fetch('/search', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ query, limit })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.error) {
+                        alert(`Search failed: ${result.error}`);
+                        return;
+                    }
+                    
+                    onSearchComplete(result);
+                } catch (error) {
+                    console.error('Search failed:', error);
+                    alert(`Search failed: ${error.message}. Please try again.`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                        <i className="fas fa-search mr-3 text-purple-600"></i>
+                        Semantic Resume Search
+                    </h2>
+                    
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div className="lg:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search Query
+                                </label>
+                                <input
+                                    type="text"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Search for resumes with specific skills, experience, or qualifications..."
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Results Limit
+                                </label>
+                                <select
+                                    value={limit}
+                                    onChange={(e) => setLimit(parseInt(e.target.value))}
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    disabled={loading}
+                                >
+                                    <option value={3}>3 results</option>
+                                    <option value={5}>5 results</option>
+                                    <option value={10}>10 results</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button
+                            onClick={handleSearch}
+                            disabled={loading || !query.trim()}
+                            className={`w-full lg:w-auto px-8 py-4 rounded-lg font-semibold transition-all flex items-center justify-center ${
+                                loading || !query.trim()
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                : 'bg-purple-600 text-white hover:bg-purple-700 hover:shadow-lg'
+                            }`}
+                        >
+                            <i className="fas fa-search mr-2"></i>
+                            {loading ? 'Searching...' : 'Search Resumes'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Analysis Results Component
+        function AnalysisResults({ result, type }) {
+            const [downloading, setDownloading] = useState(false);
+
+            const downloadReport = async () => {
+                setDownloading(true);
+                try {
+                    const response = await fetch('/download_report', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ analysis_result: result })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Download failed: ${response.status}`);
+                    }
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'resume_analysis_report.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    alert('Download failed. Please try again.');
+                } finally {
+                    setDownloading(false);
+                }
+            };
+
+            if (type === 'bulk') {
+                return <BulkResultsView results={result} onDownload={downloadReport} downloading={downloading} />;
+            }
+
+            return (
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-2xl font-bold text-gray-800">
+                            <i className="fas fa-chart-bar mr-3 text-blue-600"></i>
+                            Analysis Results
+                        </h2>
+                        <button
+                            onClick={downloadReport}
+                            disabled={downloading}
+                            className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                                downloading
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg'
+                            }`}
+                        >
+                            <i className={`fas ${downloading ? 'fa-spinner fa-spin' : 'fa-download'} mr-2`}></i>
+                            {downloading ? 'Generating...' : 'Download PDF Report'}
+                        </button>
+                    </div>
+
+                    <SingleResultView result={result} />
+                </div>
+            );
+        }
+
+        // Single Result View Component
+        function SingleResultView({ result }) {
+            if (result.error) {
+                return (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                        <div className="flex items-center text-red-700">
+                            <i className="fas fa-exclamation-triangle mr-3 text-xl"></i>
+                            <span className="font-semibold">{result.error}</span>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-8">
+                    {/* Score and Role Fit */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
+                            <div className="text-center">
+                                <div className="text-5xl font-bold mb-2">{result.ats_score}/100</div>
+                                <div className="text-blue-100">ATS Score</div>
+                                <div className="w-full bg-blue-400 rounded-full h-3 mt-4">
+                                    <div 
+                                        className="bg-white rounded-full h-3 transition-all duration-1000"
+                                        style={{"width": `${result.ats_score}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {result.role_fit && (
+                            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold mb-2">
+                                        {result.role_fit.primary_role || result.role_fit.target_role}
+                                    </div>
+                                    <div className="text-green-100">Best Role Fit</div>
+                                    {result.role_fit.fit_score && (
+                                        <div className="text-3xl font-bold mt-2">
+                                            {Math.round(result.role_fit.fit_score)}%
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Feedback */}
+                    <div className="bg-gray-50 rounded-xl p-6">
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                            <i className="fas fa-comment-dots mr-2 text-blue-600"></i>
+                            Key Feedback
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {result.feedback && result.feedback.map((item, index) => (
+                                <div key={index} className={`flex items-start p-3 rounded-lg ${
+                                    item.includes('✅') ? 'bg-green-50 text-green-700 border border-green-200' :
+                                    item.includes('⚠️') ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                                    'bg-red-50 text-red-700 border border-red-200'
+                                }`}>
+                                    <i className={`mt-1 mr-3 ${
+                                        item.includes('✅') ? 'fas fa-check-circle' :
+                                        item.includes('⚠️') ? 'fas fa-exclamation-triangle' :
+                                        'fas fa-times-circle'
+                                    }`}></i>
+                                    <span>{item.replace('✅', '').replace('⚠️', '').replace('❌', '').trim()}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Detailed Sections */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Contact Information */}
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
+                            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                                <i className="fas fa-address-card mr-2 text-blue-600"></i>
+                                Contact Information
+                            </h3>
+                            <div className="space-y-3">
+                                {Object.entries(result.contact).map(([key, value]) => (
+                                    value && (
+                                        <div key={key} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                                            <i className={`mr-3 text-blue-500 ${
+                                                key === 'email' ? 'fas fa-envelope' :
+                                                key === 'phone' ? 'fas fa-phone' :
+                                                key === 'linkedin' ? 'fab fa-linkedin' :
+                                                key === 'github' ? 'fab fa-github' :
+                                                'fas fa-map-marker-alt'
+                                            }`}></i>
+                                            <div>
+                                                <div className="font-medium text-gray-700 capitalize">{key}</div>
+                                                <div className="text-gray-600">{value}</div>
+                                            </div>
+                                        </div>
+                                    )
+                                ))}
+                                {!Object.values(result.contact).some(val => val) && (
+                                    <div className="text-center text-gray-500 py-4">
+                                        No contact information found
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Skills */}
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
+                            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                                <i className="fas fa-tools mr-2 text-green-600"></i>
+                                Skills Found ({result.skills ? result.skills.length : 0})
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                {result.skills && result.skills.length > 0 ? (
+                                    result.skills.map((skill, index) => (
+                                        <span key={index} className="px-3 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                                            {skill}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <div className="text-center text-gray-500 w-full py-4">
+                                        No skills detected
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Role Fit Details */}
+                    {result.role_fit && result.role_fit.role_scores && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
+                            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                                <i className="fas fa-chart-pie mr-2 text-purple-600"></i>
+                                Role Fit Analysis
+                            </h3>
+                            <div className="space-y-4">
+                                {Object.entries(result.role_fit.role_scores)
+                                    .sort(([,a], [,b]) => b.match_percentage - a.match_percentage)
+                                    .slice(0, 5)
+                                    .map(([role, data]) => (
+                                    <div key={role} className="border border-gray-200 rounded-lg p-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="font-semibold text-gray-700">{role}</span>
+                                            <span className="text-lg font-bold text-blue-600">
+                                                {Math.round(data.match_percentage)}%
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div 
+                                                className="bg-blue-500 rounded-full h-2 transition-all duration-1000"
+                                                style={{"width": `${data.match_percentage}%`}}
+                                            ></div>
+                                        </div>
+                                        {data.matched_keywords && data.matched_keywords.length > 0 && (
+                                            <div className="mt-2">
+                                                <div className="text-sm text-gray-600">
+                                                    Matched: {data.matched_keywords.slice(0, 3).join(', ')}
+                                                    {data.matched_keywords.length > 3 && ` and ${data.matched_keywords.length - 3} more`}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Additional Info */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                            <i className="fas fa-info-circle mr-2 text-blue-600"></i>
+                            Additional Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="font-medium text-gray-700">Word Count</span>
+                                <span className="text-blue-600 font-semibold">{result.word_count || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="font-medium text-gray-700">Analysis Date</span>
+                                <span className="text-blue-600 font-semibold">{result.analysis_date || 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Bulk Results View Component
+        function BulkResultsView({ results, onDownload, downloading }) {
+            return (
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">
+                                <i className="fas fa-users mr-3 text-green-600"></i>
+                                Bulk Analysis Results
+                            </h2>
+                            <div className="text-lg font-semibold text-gray-700 mt-2">
+                                Processed: {results.total_processed} resumes
+                                {results.total_failed > 0 && ` | Failed: ${results.total_failed}`}
+                            </div>
+                        </div>
+                        <button
+                            onClick={onDownload}
+                            disabled={downloading}
+                            className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                                downloading
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg'
+                            }`}
+                        >
+                            <i className={`fas ${downloading ? 'fa-spinner fa-spin' : 'fa-download'} mr-2`}></i>
+                            {downloading ? 'Generating...' : 'Download Report'}
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {results.results && results.results.map((result, index) => (
+                            <div key={index} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
+                                <div className="flex justify-between items-start mb-4">
+                                    <h3 className="font-semibold text-gray-800 truncate" title={result.filename}>
+                                        {result.filename}
+                                    </h3>
+                                    <div className="text-2xl font-bold text-blue-600">
+                                        {result.ats_score}
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    <div className="flex items-center text-sm text-gray-600">
+                                        <i className="fas fa-envelope mr-2"></i>
+                                        {result.contact.email || 'No email'}
+                                    </div>
+                                    <div className="flex items-center text-sm text-gray-600">
+                                        <i className="fas fa-phone mr-2"></i>
+                                        {result.contact.phone || 'No phone'}
+                                    </div>
+                                    {result.role_fit && (
+                                        <div className="flex items-center text-sm text-gray-600">
+                                            <i className="fas fa-briefcase mr-2"></i>
+                                            {result.role_fit.primary_role} ({Math.round(result.role_fit.fit_score)}%)
+                                        </div>
+                                    )}
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {result.skills && result.skills.slice(0, 4).map((skill, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                                {skill}
+                                            </span>
+                                        ))}
+                                        {result.skills && result.skills.length > 4 && (
+                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                                                +{result.skills.length - 4} more
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {(!results.results || results.results.length === 0) && (
+                        <div className="text-center text-gray-500 py-8">
+                            <i className="fas fa-inbox text-4xl mb-4"></i>
+                            <p>No resumes were successfully processed.</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Search Results Component
+        function SearchResults({ results }) {
+            return (
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                        <i className="fas fa-search mr-3 text-purple-600"></i>
+                        Search Results for "{results.query}"
+                    </h2>
+
+                    <div className="space-y-4">
+                        {results.results && results.results.map((result, index) => (
+                            <div key={index} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="font-semibold text-gray-800">
+                                            Resume {index + 1}
+                                        </h3>
+                                        <div className="text-sm text-gray-600 mt-1">
+                                            Similarity: {(result.similarity_score * 100).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {result.metadata.skills && result.metadata.skills.slice(0, 3).map((skill, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                                                {skill}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="text-gray-700 mb-3">
+                                    {result.preview}
+                                </div>
+                                
+                                <div className="flex items-center text-sm text-gray-600 space-x-4">
+                                    {result.metadata.contact && result.metadata.contact.email && (
+                                        <div className="flex items-center">
+                                            <i className="fas fa-envelope mr-1"></i>
+                                            {result.metadata.contact.email}
+                                        </div>
+                                    )}
+                                    {result.metadata.contact && result.metadata.contact.phone && (
+                                        <div className="flex items-center">
+                                            <i className="fas fa-phone mr-1"></i>
+                                            {result.metadata.contact.phone}
+                                        </div>
+                                    )}
+                                    {result.metadata.role_fit && (
+                                        <div className="flex items-center">
+                                            <i className="fas fa-briefcase mr-1"></i>
+                                            {result.metadata.role_fit.primary_role}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {(!results.results || results.results.length === 0) && (
+                        <div className="text-center text-gray-500 py-8">
+                            <i className="fas fa-search text-4xl mb-4"></i>
+                            <p>No results found for your search query.</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
