@@ -47,7 +47,7 @@ def initialize_models():
     try:
         nlp = spacy.load("en_core_web_sm")
         print("✅ spaCy model loaded successfully")
-    except OSError:
+    except Exception as e:
         print("❌ spaCy model not found. Please install with: python -m spacy download en_core_web_sm")
         nlp = None
     # try:
