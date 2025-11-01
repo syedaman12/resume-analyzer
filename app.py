@@ -44,12 +44,21 @@ nlp = None
 # Initialize models
 def initialize_models():
     global nlp, job_roles_classifier, vectorizer
+    # try:
+    #     nlp = spacy.load("en_core_web_sm")
+    #     print("✅ spaCy model loaded successfully")
+    # except OSError:
+    #     print("❌ spaCy model not found. Please install with: python -m spacy download en_core_web_sm")
+    #     nlp = None
     try:
+        import spacy.cli
+        spacy.cli.download("en_core_web_sm")
         nlp = spacy.load("en_core_web_sm")
-        print("✅ spaCy model loaded successfully")
-    except OSError:
-        print("❌ spaCy model not found. Please install with: python -m spacy download en_core_web_sm")
+        print("✅ spaCy model installed and loaded successfully")
+    except Exception as e:
+        print(f"❌ Failed to load spaCy model: {e}")
         nlp = None
+
     
     global faiss_index
     faiss_index = faiss.IndexFlatIP(300)
