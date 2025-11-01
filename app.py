@@ -601,47 +601,9 @@ def health_check():
 # Initialize models when app starts
 initialize_models()
 
-# Production settings
-@app.before_first_request
-def create_upload_folders():
-    """Ensure upload folders exist before first request"""
-    for folder in [app.config['UPLOAD_FOLDER'], app.config['CACHE_FOLDER']]:
-        os.makedirs(folder, exist_ok=True)
-
-# Health check endpoint for Render
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'service': 'Resume Analyzer Pro',
-        'timestamp': datetime.now().isoformat(),
-        'models_loaded': nlp is not None,
-        'version': '1.0.0'
-    })
-
-# Handle 404 errors
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
-
-# Handle 500 errors
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
-# Add CORS headers for all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
 if __name__ == '__main__':
     print("🚀 Starting Resume Analyzer Pro...")
     print("📁 Upload folder:", app.config['UPLOAD_FOLDER'])
     print("📁 Cache folder:", app.config['CACHE_FOLDER'])
     print("🌐 Server running on http://0.0.0.0:5000")
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
-    
+    # app.run(debug=True, host='0.0.0.0', port=5000)
